@@ -194,69 +194,46 @@ function renderRecommendations(recipes) {
 
     if (!recipes || recipes.length === 0) {
         grid.innerHTML = '<p class="empty-sub">No recipes match those filters.</p>';
+        // Update counter
         const counter = document.getElementById('rec-count');
         if (counter) counter.textContent = '0';
         return;
     }
 
     grid.innerHTML = recipes.map(r => {
-        const scoreHtml = r.score > 0
-            ? `<span class="card-score">${Math.round(r.score * 100)}%</span>` : '';
+        const imgHtml = r.image
+            ? `<div class="card-img-wrap"><img src="${r.image}" alt="${r.title}" class="card-img" loading="lazy"></div>`
+            : '';
+        const matchedHtml = r.matched.length
+            ? `<div class="card-matched">${r.matched.map(s => `<span class="spice-tag">${s}</span>`).join('')}</div>`
+            : '';
         const heartClass = r.saved ? 'card-heart saved' : 'card-heart';
         const heartChar  = r.saved ? '♥' : '♡';
-        const matchedEsc = JSON.stringify(r.matched).replace(/'/g, '&#39;');
-        const titleEsc   = r.title.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const profileEsc = (r.profile || '').replace(/"/g, '&quot;');
-
-        const photoHtml = r.image
-            ? `<div class="card-photo" style="background-image:url('${r.image}')">
-                <div class="card-photo-overlay"></div>
-                ${scoreHtml}
-                <button class="${heartClass}"
-                    data-title="${titleEsc}"
-                    data-profile="${profileEsc}"
-                    data-matched='${matchedEsc}'
-                    onclick="toggleSave(event, this)">${heartChar}</button>
-               </div>`
-            : `<div class="card-photo card-photo-empty">
-                <div class="card-photo-overlay"></div>
-                ${scoreHtml}
-                <button class="${heartClass}"
-                    data-title="${titleEsc}"
-                    data-profile="${profileEsc}"
-                    data-matched='${matchedEsc}'
-                    onclick="toggleSave(event, this)">${heartChar}</button>
-                <span class="card-placeholder-icon">🌶</span>
-               </div>`;
-
-        const courseHtml = (r.course && r.course !== 'nan' && r.course !== 'Other/Miscellaneous')
-            ? `<span class="chip-course">${r.course}</span>` : '';
-        const dietsHtml = (r.diets || []).slice(0, 3)
-            .map(d => `<span class="chip-diet">${d}</span>`).join('');
-        const metaHtml = (courseHtml || dietsHtml)
-            ? `<div class="card-meta">${courseHtml}${dietsHtml}</div>` : '';
-
-        const matchedChips = (r.matched || [])
-            .map(s => s.trim() ? `<span class="chip-matched">${s.trim()}</span>` : '').join('');
-        const missingChips = (r.missing || []).slice(0, 2)
-            .map(s => s.trim() ? `<span class="chip-missing">${s.trim()}</span>` : '').join('');
-        const spiceChipsHtml = (matchedChips || missingChips)
-            ? `<div class="spice-chips">${matchedChips}${missingChips}</div>` : '';
+        const dietBadges = r.diets.map(d => `<span class="diet-badge">${d}</span>`).join('');
 
         return `
-        <article class="recipe-card" data-title="${titleEsc}" onclick="openRecipeTab(this.dataset.title)">
-            ${photoHtml}
+        <article class="recipe-card" data-title="${r.title}">
+            ${imgHtml}
             <div class="card-body">
-                <h3 class="recipe-title" data-title="${titleEsc}"
-                    onclick="event.stopPropagation(); openRecipeTab('${titleEsc}')">
-                    ${r.title}
-                </h3>
-                ${metaHtml}
-                ${spiceChipsHtml}
+                <div class="card-top-row">
+                    <p class="card-profile">${r.profile}</p>
+                    <button class="${heartClass}"
+                        onclick="toggleSave(event, this)"
+                        data-title="${r.title.replace(/"/g, '&quot;')}"
+                        data-profile="${r.profile.replace(/"/g, '&quot;')}"
+                        data-matched='${JSON.stringify(r.matched)}'
+                        title="${r.saved ? 'Saved' : 'Save to Your Recipes'}">
+                        ${heartChar}
+                    </button>
+                </div>
+                <h3 class="card-title recipe-title" data-title="${r.title}">${r.title}</h3>
+                ${matchedHtml}
+                ${dietBadges}
             </div>
         </article>`;
     }).join('');
 
+    // Update the "X recipes found" counter if it exists in your template
     const counter = document.getElementById('rec-count');
     if (counter) counter.textContent = recipes.length;
 }
@@ -346,31 +323,28 @@ function toggleSaveFromModal(event) {
 
 // ── SEARCH ────────────────────────────────────────────────────────────────────
 
-// Intercept spice add form — AJAX instead of full page submit
 document.addEventListener('DOMContentLoaded', () => {
-    const addForm = document.querySelector('form[action="/add_spices"]');
-    if (addForm) {
-        addForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const input = addForm.querySelector('[name="user_spice_add"]');
-            const val   = input ? input.value.trim() : '';
-            if (!val) return;
+    const input = document.getElementById('search-input');
+    if (!input) return;
 
-            const resp = await fetch('/add_spices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ spices: val })
-            });
-            const data = await resp.json();
-            if (input) input.value = '';
+    input.addEventListener('focus', () => {
+        switchTab('tab-search-all', null);
+    });
 
-            if (data.accepted.length) showFlash(`✓ Added: ${data.accepted.join(', ')}`, 'success');
-            if (data.rejected.length) showFlash(`✗ Not recognized: ${data.rejected.join(', ')}`, 'error');
-
-            renderSpiceList(data.spices);
-            applyFilters(); // refresh recommendations with new pantry
-        });
-    }
+    input.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(searchTimer);
+        if (query.length < 2) return;
+        searchTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const recipes  = await response.json();
+                renderSearchResults(recipes);
+            } catch (error) {
+                console.error("Search failed:", error);
+            }
+        }, 400);
+    });
 });
 
 function renderSearchResults(recipes) {
@@ -504,61 +478,4 @@ async function submitBarcode() {
         result.innerText   = 'Something went wrong.';
         result.style.color = '#c0392b';
     }
-}
-
-function showFlash(msg, type) {
-    // Reuse whatever flash element your template already has, or create one
-    let el = document.getElementById('flash-msg');
-    if (!el) {
-        el = document.createElement('div');
-        el.id = 'flash-msg';
-        el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);'
-            + 'padding:8px 18px;border-radius:20px;font-size:13px;font-family:DM Sans,sans-serif;'
-            + 'z-index:9999;pointer-events:none;transition:opacity 0.4s;';
-        document.body.appendChild(el);
-    }
-    el.textContent = msg;
-    el.style.background = type === 'success' ? '#3D5A3E' : '#c0392b';
-    el.style.color = '#fff';
-    el.style.opacity = '1';
-    clearTimeout(el._timer);
-    el._timer = setTimeout(() => el.style.opacity = '0', 2800);
-}
-
-function renderSpiceList(spices) {
-    // Re-render the spice list panel without a page reload.
-    // Find your spice list container — adjust selector to match your template.
-    const favContainer  = document.querySelector('.fav-spices-list, #fav-spices');
-    const restContainer = document.querySelector('.spices-list, #spices-list');
-    if (!favContainer && !restContainer) return; // can't find containers, skip
-
-    const favs = spices.filter(s => s.is_favorite);
-    const rest = spices.filter(s => !s.is_favorite);
-
-    const makeItem = s => `
-        <div class="spice-item" data-spice-id="${s.id}">
-            <span class="spice-name">${s.name}</span>
-            <div class="spice-actions">
-                <button class="fav-btn ${s.is_favorite ? 'fav-active' : ''}"
-                    onclick="toggleSpiceFav(event, ${s.id})" title="Favorite">★</button>
-                <button class="remove-spice-btn"
-                    onclick="removeSpice(event, ${s.id})" title="Remove">×</button>
-            </div>
-        </div>`;
-
-    if (favContainer)  favContainer.innerHTML  = favs.map(makeItem).join('');
-    if (restContainer) restContainer.innerHTML = rest.map(makeItem).join('');
-}
-
-async function removeSpice(event, spiceId) {
-    event.preventDefault();
-    event.stopPropagation();
-    const resp = await fetch('/remove_spice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spice_id: spiceId })
-    });
-    const data = await resp.json();
-    renderSpiceList(data.spices);
-    applyFilters();
 }
