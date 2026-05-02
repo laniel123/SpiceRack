@@ -385,30 +385,37 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderSearchResults(recipes) {
     const grid = document.getElementById('global-search-results');
     if (!grid) return;
+
+    // 1. CLEAR AND RENDER THE DATA
     if (!Array.isArray(recipes)) {
         grid.innerHTML = '<p class="empty-sub">Server error. Please check your backend.</p>';
         return;
     }
     if (recipes.length === 0) {
         grid.innerHTML = '<p class="empty-sub">No recipes found matching your search.</p>';
-        return;
-    }
-    grid.innerHTML = recipes.map(r => `
-        <article class="recipe-card text-only-card" data-title="${r.title}" onclick="openRecipeTab(this.dataset.title)">
-            <div class="card-body">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <p class="card-profile">GLOBAL DATABASE</p>
-                    <button class="card-heart ${r.saved ? 'saved' : ''}"
-                            onclick="toggleSave(event, this)"
-                            data-title="${r.title}"
-                            style="position: static; width: 24px; height: 24px; font-size: 14px;">
-                        ${r.saved ? '♥' : '♡'}
-                    </button>
+    } else {
+        grid.innerHTML = recipes.map(r => `
+            <article class="recipe-card text-only-card" data-title="${r.title}" onclick="openRecipeTab(this.dataset.title)">
+                <div class="card-body">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <p class="card-profile">GLOBAL DATABASE</p>
+                        <button class="card-heart ${r.saved ? 'saved' : ''}"
+                                onclick="toggleSave(event, this)"
+                                data-title="${r.title}"
+                                style="position: static; width: 24px; height: 24px; font-size: 14px;">
+                            ${r.saved ? '♥' : '♡'}
+                        </button>
+                    </div>
+                    <h3 class="card-title">${r.title}</h3>
                 </div>
-                <h3 class="card-title">${r.title}</h3>
-            </div>
-        </article>
-    `).join('');
+            </article>
+        `).join('');
+    }
+
+    // 2. TRIGGER THE TAB SWITCH
+    // This finds your hidden search tab button and "clicks" it via code
+    const searchTabBtn = document.getElementById('search-tab-button');
+    switchTab('tab-search-all', searchTabBtn);
 }
 
 function clearSearch() {

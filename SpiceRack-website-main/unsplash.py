@@ -8,86 +8,74 @@ import urllib.parse
 ACCESS_KEY = "n5oAXLrI1Jyo2dGik1PjYZZEvejVeY0z8s8oGBjhTL0"
 BASE       = os.path.dirname(os.path.abspath(__file__))
 CACHE_FILE = os.path.join(BASE, "data", "photo_cache.json")
-SAVE_INTERVAL = 10
+# NEW: Track usage across restarts
+LIMIT_FILE = os.path.join(BASE, "data", "api_usage.json") 
 
-# Rate Limiting Settings
 HOURLY_LIMIT = 50
-_api_count = 0
-_last_reset_time = time.time()
+_cache_lock  = threading.Lock()
 
-_cache_lock    = threading.Lock()
-_unsaved_count = 0
-
-def _load_cache() -> dict:
-    if os.path.exists(CACHE_FILE):
+def _load_json(path):
+    if os.path.exists(path):
         try:
-            with open(CACHE_FILE) as f:
-                return json.load(f)
-        except Exception:
-            pass
+            with open(path) as f: return json.load(f)
+        except: pass
     return {}
 
-def _save_cache(cache: dict):
-    try:
-        with open(CACHE_FILE, "w") as f:
-            json.dump(cache, f, indent=2)
-    except Exception as e:
-        print(f"[unsplash] could not save cache: {e}")
+_cache = _load_json(CACHE_FILE)
+_usage = _load_json(LIMIT_FILE)
 
-_cache = _load_cache()
+# Initialize usage state
+_api_count = _usage.get("count", 0)
+_last_reset_time = _usage.get("reset_at", time.time())
 
-def get_photo_url(recipe_title: str, spices: list = []) -> str:
-    global _unsaved_count, _api_count, _last_reset_time
+def _save_usage():
+    with open(LIMIT_FILE, "w") as f:
+        json.dump({"count": _api_count, "reset_at": _last_reset_time}, f)
 
-    # 1. Check Memory Cache (Handles both valid URLs and "NOT_FOUND")
+def get_photo_url(recipe_title: str, spices: list = [], force_cache_only: bool = False) -> str:
+    global _api_count, _last_reset_time
+
+    # 1. Immediate Cache Check
     with _cache_lock:
         if recipe_title in _cache:
             val = _cache[recipe_title]
             return "" if val == "NOT_FOUND" else val
 
-    # 2. Check Hourly Rate Limit
+    # 2. Check if we are allowed to hit the network
+    if force_cache_only: return ""
+
     current_time = time.time()
     if current_time - _last_reset_time > 3600:
         _api_count = 0
         _last_reset_time = current_time
+        _save_usage()
 
     if _api_count >= HOURLY_LIMIT:
-        return "" # Silently stop querying if over limit to preserve speed
+        print(f"[unsplash] Hourly limit reached. Skipping network for: {recipe_title}")
+        return "" 
 
-    # 3. Fetch from Unsplash
-    photo_url = "NOT_FOUND" # Default to negative result
+    # 3. API Fetch
+    photo_url = "NOT_FOUND"
     try:
-        _api_count += 1
-        spice_hint = " ".join(spices[:2]) if spices else ""
-        search     = f"{recipe_title} {spice_hint} food recipe".strip()
-        query      = urllib.parse.quote(search)
-        url        = (f"https://api.unsplash.com/search/photos"
-                      f"?query={query}&per_page=1&orientation=landscape")
+        # Construct search... (same as your current logic)
+        query = urllib.parse.quote(f"{recipe_title} food recipe")
+        url = f"https://api.unsplash.com/search/photos?query={query}&per_page=1"
         
-        req = urllib.request.Request(url, headers={
-            "Authorization":  f"Client-ID {ACCESS_KEY}",
-            "Accept-Version": "v1",
-            "User-Agent":     "SpiceRack/1.0"
-        })
-        
+        req = urllib.request.Request(url, headers={"Authorization": f"Client-ID {ACCESS_KEY}"})
+        _api_count += 1 # Increment before the call
+        _save_usage()
+
         with urllib.request.urlopen(req, timeout=3) as resp:
             data = json.loads(resp.read())
-            results = data.get("results", [])
-            if results:
-                photo_url = results[0]["urls"]["regular"]
-
+            if data.get("results"):
+                photo_url = data["results"][0]["urls"]["regular"]
     except Exception as e:
-        print(f"[unsplash] API error for '{recipe_title}': {e}")
-        # Note: We don't cache as NOT_FOUND on network errors, 
-        # only when the API explicitly returns 0 results.
+        print(f"[unsplash] API error: {e}")
         return ""
 
-    # 4. Update Cache (Always stores, even if "NOT_FOUND")
+    # 4. Save result
     with _cache_lock:
         _cache[recipe_title] = photo_url
-        _unsaved_count += 1
-        if _unsaved_count >= SAVE_INTERVAL:
-            _save_cache(_cache)
-            _unsaved_count = 0
+        with open(CACHE_FILE, "w") as f: json.dump(_cache, f)
 
     return "" if photo_url == "NOT_FOUND" else photo_url

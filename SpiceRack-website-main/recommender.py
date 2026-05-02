@@ -7,6 +7,7 @@ n_clusters, n_recipes, silhouette
 """
 
 import os
+import re
 import ast
 import joblib
 import numpy as np
@@ -288,14 +289,29 @@ def get_recipe_details(title: str) -> dict | None:
 
 
 def search_recipes(query: str, max_results: int = 50) -> pd.DataFrame:
-    """Fast title search using the precomputed lowercase title array."""
+    """Fast title search prioritizing whole-word matches."""
     load()
     if _recipe_df is None or _lower_titles is None:
         return pd.DataFrame()
-    lower_q = query.lower()
-    mask = pd.Series(_lower_titles).str.contains(lower_q, regex=False, na=False).values
-    return _recipe_df[mask].head(max_results)
-
+    
+    lower_q = query.lower().strip()
+    
+    # 1. Try Whole Word Match First (e.g., finds "Mole" but not "Guacamole")
+    # \b is a word boundary in regex
+    pattern = rf'\b{re.escape(lower_q)}\b'
+    mask_exact = pd.Series(_lower_titles).str.contains(pattern, regex=True, na=False).values
+    
+    exact_matches = _recipe_df[mask_exact]
+    
+    # 2. If we don't have enough exact matches, fill the rest with substring matches
+    if len(exact_matches) < max_results:
+        # Exclude what we already found
+        mask_sub = pd.Series(_lower_titles).str.contains(lower_q, regex=False, na=False).values
+        mask_sub = mask_sub & ~mask_exact
+        sub_matches = _recipe_df[mask_sub].head(max_results - len(exact_matches))
+        return pd.concat([exact_matches, sub_matches]).head(max_results)
+        
+    return exact_matches.head(max_results)
 
 def get_recipe_meta(title: str) -> dict:
     """Return course and diets for a saved recipe using precomputed arrays."""
