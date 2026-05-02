@@ -92,23 +92,17 @@
             {% if not favorite_spices and not remaining_spices %}
             <p class="pantry-empty">No spices yet. Add some below ↓</p>
             {% endif %}
-            <ul class="spice-list">
+            <ul class="spice-list" id="spice-list">
                 {% for spice in favorite_spices %}
                 <li>
-                    <form action="/remove_spice" method="post" style="display:inline">
-                        <input type="hidden" name="spice_id" value="{{ spice.id }}">
-                        <button type="submit" class="x-btn" title="Remove {{ spice.name }}">×</button>
-                    </form>
-                    <button class="spice-heart-btn saved" onclick="toggleSpiceFav(event, {{ spice.id }})">♥</button>
-                    {{ spice.name }}
+                     <button class="x-btn" onclick="removeSpice(event, {{ spice.id }})">×</button> 
+                     <button class="spice-heart-btn saved" onclick="toggleSpiceFav(event, {{ spice.id }})">♥</button>
+                     {{ spice.name }}
                 </li>
-                {% endfor %}
-                {% for spice in remaining_spices %}
+                 {% endfor %}
+                 {% for spice in remaining_spices %}
                 <li>
-                    <form action="/remove_spice" method="post" style="display:inline">
-                        <input type="hidden" name="spice_id" value="{{ spice.id }}">
-                        <button type="submit" class="x-btn" title="Remove {{ spice.name }}">×</button>
-                    </form>
+                    <button class="x-btn" onclick="removeSpice(event, {{ spice.id }})">×</button>
                     <button class="spice-heart-btn" onclick="toggleSpiceFav(event, {{ spice.id }})">♡</button>
                     {{ spice.name }}
                 </li>
@@ -119,12 +113,12 @@
             <h1 class="spice-card-title">Add Spices</h1>
         </div>
         <div class="spice-card-body spice-card-input">
-            <form id="spice-form" action="/add_spices" method="post">
+            <form id="spice-form">
                 <textarea name="user_spice_add" placeholder="I.e: sea salt, garlic powder..."></textarea>
             </form>
         </div>
         <div class="spice-card-footer">
-            <div class="submit-box" onclick="document.getElementById('spice-form').submit()">
+            <div class="submit-box" onclick="handleSpiceAdd()">
                 <h1 class="submit-text">Submit</h1>
             </div>
             <div class="scan-box" onclick="openBarcodeModal()">

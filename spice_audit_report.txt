@@ -1,0 +1,228 @@
+======================================================================
+  SPICERACK — SPICE AUDIT REPORT
+======================================================================
+
+  Total recipes scanned  : 2,231,142
+  Existing spices tracked: 0
+  Candidate new spices   : 1516862
+
+──────────────────────────────────────────────────────────────────────
+  SECTION 1: YOUR EXISTING SPICES — ranked by recipe appearances
+──────────────────────────────────────────────────────────────────────
+  SPICE                                  RECIPES  % OF DATASET
+  ----------------------------------- ----------  ------------
+
+──────────────────────────────────────────────────────────────────────
+  SECTION 2: TOP 200 CANDIDATES NOT IN YOUR LIST
+  (Paste this section to Claude to update spice_data.py)
+──────────────────────────────────────────────────────────────────────
+  CANDIDATE TOKEN                             RECIPES  % OF DATASET
+  ---------------------------------------- ----------  ------------
+  black pepper                                217,156         9.73%
+  cinnamon                                    202,144         9.06%
+  parsley                                     170,290         7.63%
+  mustard                                     134,361         6.02%
+  ground black                                118,806         5.32%
+  ground black pepper                         118,401         5.31%
+  ginger                                      111,031         4.98%
+  chili                                       109,007         4.89%
+  unsalted                                    106,467         4.77%
+  basil                                       100,302         4.50%
+  freshly ground                               96,290         4.32%
+  unsalted butter                              93,706         4.20%
+  kosher salt                                  86,149         3.86%
+  peppers                                      85,744         3.84%
+  thyme                                        85,126         3.82%
+  nutmeg                                       83,937         3.76%
+  oregano                                      83,698         3.75%
+  seasoning                                    79,335         3.56%
+  red pepper                                   79,017         3.54%
+  powdered                                     75,890         3.40%
+  bell pepper                                  73,903         3.31%
+  cumin                                        72,522         3.25%
+  flakes                                       70,392         3.15%
+  paprika                                      70,145         3.14%
+  powdered sugar                               63,282         2.84%
+  green pepper                                 63,079         2.83%
+  freshly ground black                         62,670         2.81%
+  tsp cinnamon                                 58,394         2.62%
+  cayenne                                      56,744         2.54%
+  ground cinnamon                              55,863         2.50%
+  bay                                          54,829         2.46%
+  sausage                                      54,788         2.46%
+  chili powder                                 53,474         2.40%
+  sesame                                       52,390         2.35%
+  fresh parsley                                49,816         2.23%
+  cayenne pepper                               42,541         1.91%
+  sea salt                                     41,074         1.84%
+  dill                                         40,446         1.81%
+  jalapeno                                     38,036         1.70%
+  dijon mustard                                38,022         1.70%
+  rosemary                                     37,773         1.69%
+  ground cumin                                 37,426         1.68%
+  cinnamon tsp                                 35,788         1.60%
+  cinnamon teaspoon                            35,359         1.58%
+  salt and freshly                             35,108         1.57%
+  fresh basil                                  34,789         1.56%
+  tablespoons unsalted                         33,681         1.51%
+  and freshly ground                           33,629         1.51%
+  pepper flakes                                33,260         1.49%
+  tablespoons unsalted butter                  33,240         1.49%
+  teaspoon black pepper                        32,069         1.44%
+  coriander                                    31,542         1.41%
+  teaspoon cinnamon                            31,114         1.39%
+  red pepper flakes                            30,400         1.36%
+  dried oregano                                30,330         1.36%
+  teaspoon ground cinnamon                     30,327         1.36%
+  curry                                        29,769         1.33%
+  chilies                                      28,517         1.28%
+  tsp cinnamon tsp                             28,438         1.27%
+  black pepper to                              28,280         1.27%
+  fresh ginger                                 27,292         1.22%
+  red bell pepper                              27,233         1.22%
+  dry mustard                                  27,105         1.21%
+  teaspoon kosher salt                         26,953         1.21%
+  allspice                                     26,800         1.20%
+  fresh thyme                                  26,589         1.19%
+  sesame oil                                   26,412         1.18%
+  bay leaf                                     26,055         1.17%
+  freshly ground pepper                        25,007         1.12%
+  sage                                         24,123         1.08%
+  ground ginger                                23,987         1.08%
+  cocoa powder                                 23,211         1.04%
+  spice                                        23,184         1.04%
+  ground nutmeg                                22,946         1.03%
+  bay leaves                                   22,926         1.03%
+  tsp nutmeg                                   22,897         1.03%
+  chopped parsley                              22,893         1.03%
+  teaspoon cayenne                             22,804         1.02%
+  dried thyme                                  22,730         1.02%
+  bell peppers                                 22,567         1.01%
+  basil leaves                                 22,304         1.00%
+  chopped fresh parsley                        21,826         0.98%
+  chile                                        21,406         0.96%
+  white pepper                                 21,140         0.95%
+  crushed red pepper                           20,786         0.93%
+  curry powder                                 20,762         0.93%
+  teaspoon freshly ground                      20,614         0.92%
+  cumin teaspoon                               20,558         0.92%
+  lean ground                                  20,420         0.92%
+  black pepper teaspoon                        19,913         0.89%
+  flat leaf                                    19,856         0.89%
+  flaked                                       19,711         0.88%
+  green bell pepper                            19,612         0.88%
+  green chilies                                19,568         0.88%
+  leaf parsley                                 19,141         0.86%
+  teaspoon ground cumin                        19,042         0.85%
+  turmeric                                     19,004         0.85%
+  flat leaf parsley                            18,855         0.85%
+  dried basil                                  18,845         0.84%
+  ground cinnamon teaspoon                     18,743         0.84%
+  sesame seeds                                 18,620         0.83%
+  chopped green pepper                         18,459         0.83%
+  stalks celery                                18,250         0.82%
+  fresh ground black                           18,231         0.82%
+  parsley chopped                              17,882         0.80%
+  teaspoon cayenne pepper                      17,448         0.78%
+  salt freshly                                 17,382         0.78%
+  cup unsalted                                 17,338         0.78%
+  black pepper cup                             17,203         0.77%
+  lean ground beef                             16,833         0.75%
+  chiles                                       16,765         0.75%
+  mustard teaspoon                             16,743         0.75%
+  fennel                                       16,713         0.75%
+  salt freshly ground                          16,615         0.74%
+  c powdered                                   16,330         0.73%
+  tarragon                                     16,199         0.73%
+  cinnamon c                                   16,157         0.72%
+  raspberry                                    16,154         0.72%
+  raspberries                                  16,100         0.72%
+  green pepper chopped                         16,009         0.72%
+  teaspoon dried oregano                       15,991         0.72%
+  salted                                       15,941         0.71%
+  oregano teaspoon                             15,884         0.71%
+  teaspoon paprika                             15,477         0.69%
+  salt teaspoon black                          15,475         0.69%
+  bell pepper chopped                          15,362         0.69%
+  c powdered sugar                             15,296         0.69%
+  cup unsalted butter                          15,259         0.68%
+  fresh rosemary                               15,234         0.68%
+  vanilla pudding                              15,216         0.68%
+  ginger teaspoon                              15,075         0.68%
+  green peppers                                14,990         0.67%
+  peppercorns                                  14,744         0.66%
+  blend                                        14,659         0.66%
+  teaspoon cumin                               14,617         0.66%
+  mustard tsp                                  14,448         0.65%
+  kosher salt teaspoon                         14,361         0.64%
+  italian seasoning                            14,316         0.64%
+  ground cumin teaspoon                        14,311         0.64%
+  tsp black pepper                             14,308         0.64%
+  teaspoon ground black                        14,095         0.63%
+  teaspoon chili                               13,998         0.63%
+  seedless                                     13,917         0.62%
+  hot pepper                                   13,832         0.62%
+  teaspoon dried thyme                         13,477         0.60%
+  tsp oregano                                  13,465         0.60%
+  tsp dry mustard                              13,440         0.60%
+  paprika teaspoon                             13,433         0.60%
+  kosher salt and                              13,371         0.60%
+  taco seasoning                               13,300         0.60%
+  teaspoon nutmeg                              13,255         0.59%
+  celery soup                                  13,233         0.59%
+  pure vanilla                                 13,176         0.59%
+  teaspoon ground ginger                       13,051         0.58%
+  teaspoon ground nutmeg                       12,946         0.58%
+  parsley leaves                               12,886         0.58%
+  nutmeg tsp                                   12,834         0.58%
+  vanilla ice                                  12,777         0.57%
+  pure vanilla extract                         12,734         0.57%
+  chili sauce                                  12,692         0.57%
+  prepared mustard                             12,543         0.56%
+  nutmeg teaspoon                              12,517         0.56%
+  vanilla ice cream                            12,494         0.56%
+  teaspoon cinnamon teaspoon                   12,472         0.56%
+  tsp cinnamon c                               12,439         0.56%
+  mint leaves                                  12,371         0.55%
+  chipotle                                     12,283         0.55%
+  cup powdered                                 12,243         0.55%
+  thyme teaspoon                               12,160         0.55%
+  cinnamon teaspoon ground                     12,046         0.54%
+  tsp paprika                                  12,032         0.54%
+  pepper cut                                   11,809         0.53%
+  maraschino                                   11,806         0.53%
+  chili powder teaspoon                        11,777         0.53%
+  thyme leaves                                 11,750         0.53%
+  cardamom                                     11,694         0.52%
+  salt teaspoon freshly                        11,680         0.52%
+  parsley flakes                               11,659         0.52%
+  flaked coconut                               11,522         0.52%
+  of celery soup                               11,502         0.52%
+  fresh dill                                   11,476         0.51%
+  dill weed                                    11,302         0.51%
+  cup powdered sugar                           11,277         0.51%
+  teaspoon chili powder                        11,241         0.50%
+  tsp chili                                    11,202         0.50%
+  cilantro leaves                              11,169         0.50%
+  jalapeno pepper                              11,162         0.50%
+  herb                                         11,156         0.50%
+  ground coriander                             11,078         0.50%
+  cinnamon cup                                 11,074         0.50%
+  red peppers                                  11,069         0.50%
+  black pepper tablespoons                     11,053         0.50%
+  olive oil salt                               11,047         0.50%
+  unsalted butter melted                       10,932         0.49%
+  coarse salt                                  10,629         0.48%
+  unsalted butter softened                     10,621         0.48%
+  ground turkey                                10,500         0.47%
+  tsp nutmeg tsp                               10,346         0.46%
+  seasoned salt                                10,317         0.46%
+  tsp chili powder                             10,281         0.46%
+
+──────────────────────────────────────────────────────────────────────
+  SECTION 3: QUICK STATS
+──────────────────────────────────────────────────────────────────────
+
+======================================================================
+  END OF REPORT — paste Section 2 back to Claude to update spice_data.py
+======================================================================

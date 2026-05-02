@@ -131,24 +131,18 @@ function clearFilters() {
 function toggleSpiceFav(event, spiceId) {
     event.preventDefault();
     event.stopPropagation();
-
-    const btn  = event.currentTarget;
-    const card = btn.closest('.spice-item, .spice-card, [data-spice-id]');
-
-    // Optimistic UI toggle — flip the star immediately, no reload
-    const isFav = btn.classList.contains('fav-active');
-    btn.classList.toggle('fav-active', !isFav);
-    btn.title = isFav ? 'Mark as favorite' : 'Remove favorite';
-
+    const btn = event.currentTarget;
     fetch('/toggle_spice_favorite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ spice_id: spiceId })
-    }).catch(err => {
-        // Roll back on failure
-        btn.classList.toggle('fav-active', isFav);
-        console.error('toggleSpiceFav error:', err);
-    });
+    })
+    .then(() => {
+        const isFav = btn.classList.contains('saved');
+        btn.classList.toggle('saved', !isFav);
+        btn.textContent = isFav ? '♡' : '♥';
+    })
+    .catch(err => console.error('toggleSpiceFav error:', err));
 }
 
 
@@ -348,29 +342,44 @@ function toggleSaveFromModal(event) {
 
 // Intercept spice add form — AJAX instead of full page submit
 document.addEventListener('DOMContentLoaded', () => {
-    const addForm = document.querySelector('form[action="/add_spices"]');
+
+    // Intercept spice form — prevent native POST
+    const addForm = document.getElementById('spice-form');
     if (addForm) {
-        addForm.addEventListener('submit', async (e) => {
+        addForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const input = addForm.querySelector('[name="user_spice_add"]');
-            const val   = input ? input.value.trim() : '';
-            if (!val) return;
-
-            const resp = await fetch('/add_spices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ spices: val })
-            });
-            const data = await resp.json();
-            if (input) input.value = '';
-
-            if (data.accepted.length) showFlash(`✓ Added: ${data.accepted.join(', ')}`, 'success');
-            if (data.rejected.length) showFlash(`✗ Not recognized: ${data.rejected.join(', ')}`, 'error');
-
-            renderSpiceList(data.spices);
-            applyFilters(); // refresh recommendations with new pantry
+            e.stopPropagation();
+            handleSpiceAdd();
         });
     }
+
+    // Filter checkboxes
+    document.querySelectorAll('input[name="pref"], input[name="course_pref"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            clearTimeout(filterTimer);
+            filterTimer = setTimeout(applyFilters, 300);
+        });
+    });
+
+    // Search input
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            clearTimeout(searchTimer);
+            if (query.length < 2) return;
+            searchTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                    const recipes  = await response.json();
+                    renderSearchResults(recipes);
+                } catch (error) {
+                    console.error("Search failed:", error);
+                }
+            }, 400);
+        });
+    }
+
 });
 
 function renderSearchResults(recipes) {
@@ -526,28 +535,26 @@ function showFlash(msg, type) {
 }
 
 function renderSpiceList(spices) {
-    // Re-render the spice list panel without a page reload.
-    // Find your spice list container — adjust selector to match your template.
-    const favContainer  = document.querySelector('.fav-spices-list, #fav-spices');
-    const restContainer = document.querySelector('.spices-list, #spices-list');
-    if (!favContainer && !restContainer) return; // can't find containers, skip
+    const list = document.getElementById('spice-list');
+    if (!list) return;
 
-    const favs = spices.filter(s => s.is_favorite);
-    const rest = spices.filter(s => !s.is_favorite);
+    // Clear ALL existing content first — prevents duplicates
+    list.innerHTML = '';
 
-    const makeItem = s => `
-        <div class="spice-item" data-spice-id="${s.id}">
-            <span class="spice-name">${s.name}</span>
-            <div class="spice-actions">
-                <button class="fav-btn ${s.is_favorite ? 'fav-active' : ''}"
-                    onclick="toggleSpiceFav(event, ${s.id})" title="Favorite">★</button>
-                <button class="remove-spice-btn"
-                    onclick="removeSpice(event, ${s.id})" title="Remove">×</button>
-            </div>
-        </div>`;
+    const badge = document.querySelector('.header-badge-num');
+    if (badge) badge.textContent = spices.length;
 
-    if (favContainer)  favContainer.innerHTML  = favs.map(makeItem).join('');
-    if (restContainer) restContainer.innerHTML = rest.map(makeItem).join('');
+    if (spices.length === 0) return;
+
+    list.innerHTML = spices.map(s => `
+        <li>
+            <button class="x-btn" title="Remove ${s.name}"
+                onclick="removeSpice(event, ${s.id})">×</button>
+            <button class="spice-heart-btn ${s.is_favorite ? 'saved' : ''}"
+                onclick="toggleSpiceFav(event, ${s.id})">${s.is_favorite ? '♥' : '♡'}</button>
+            ${s.name}
+        </li>
+    `).join('');
 }
 
 async function removeSpice(event, spiceId) {
@@ -561,4 +568,36 @@ async function removeSpice(event, spiceId) {
     const data = await resp.json();
     renderSpiceList(data.spices);
     applyFilters();
+}
+
+// ── SPICE PANEL (no-reload add / remove) ──────────────────────────────────────
+
+function handleSpiceAdd() {
+    const textarea = document.querySelector('#spice-form textarea[name="user_spice_add"]');
+    const val = textarea ? textarea.value.trim() : '';
+    if (!val) return;
+
+    const submitBox = document.querySelector('.submit-box');
+    if (submitBox) submitBox.style.opacity = '0.5';
+
+    fetch('/add_spices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spices: val })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (textarea) textarea.value = '';
+        if (submitBox) submitBox.style.opacity = '1';
+        if (data.accepted && data.accepted.length)
+            showFlash('✓ Added: ' + data.accepted.join(', '), 'success');
+        if (data.rejected && data.rejected.length)
+            showFlash('✗ Not recognized: ' + data.rejected.join(', '), 'error');
+        renderSpiceList(data.spices);
+        applyFilters();
+    })
+    .catch(err => {
+        if (submitBox) submitBox.style.opacity = '1';
+        console.error('addSpices error:', err);
+    });
 }

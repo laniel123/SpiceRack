@@ -154,6 +154,8 @@ SPICES = [
     "black sesame seed",
     "hemp seed",
     "flax seed",
+    "sesame oil",
+    "dijon mustard",
 
     # ── Blends & Masalas ───────────────────────────────────────────────────────
     "curry powder",
@@ -225,7 +227,23 @@ SPICES = [
     "smoked sea salt",
     "hickory smoked salt",
     "applewood smoked salt",
-
+    
+    "red pepper flakes", 
+    "curry powder",
+    "sesame oil",
+    "sesame seeds",
+    "italian seasoning",
+    "taco seasoning",
+    "dijon mustard",
+    "dry mustard",
+    "cocoa powder",
+    "dill weed",
+    "chipotle",
+    "chili sauce",
+    "bay leaf",
+    "seasoned salt",
+    "ground coriander",
+    
 ]
 
 
@@ -238,6 +256,11 @@ ALIASES = {
     "ground pepper":            "black pepper",
     "cracked pepper":           "black pepper",
     "peppercorns":              "black pepper",
+    "ground black pepper":      "black pepper",
+    "freshly ground":           "black pepper",
+    "freshly ground black":     "black pepper",
+    "freshly ground pepper":    "black pepper",
+    "fresh ground black":       "black pepper",
     "white peppercorn":         "white pepper",
     "szechuan pepper":          "sichuan pepper",
     "szechwan pepper":          "sichuan pepper",
@@ -283,6 +306,15 @@ ALIASES = {
     "jalapeño":                 "jalapeno",
     "jalapeño pepper":          "jalapeno",
     "jalapeno peppers":         "jalapeno",
+
+    # Chile name variants — high frequency in dataset
+    "chili":                    "chili powder",
+    "chile":                    "chili powder",
+    "chiles":                   "chili powder",
+    "chilies":                  "chili powder",
+    "green chilies":            "chili powder",
+    "hot pepper":               "cayenne",
+    "red pepper":               "crushed red pepper",
 
     # Warm spices
     "ground cinnamon":          "cinnamon",
@@ -350,7 +382,7 @@ ALIASES = {
     "flat leaf parsley":        "parsley",
     "curly parsley":            "parsley",
     "dried parsley flakes":     "parsley",
-    "parsley flakes":           "dried parsley",
+    "parsley flakes":           "parsley",
     "fresh parsley":            "parsley",
     "dill weed":                "dill",
     "dried dill weed":          "dill",
@@ -380,6 +412,14 @@ ALIASES = {
     "white sesame":             "sesame seed",
     "toasted sesame":           "sesame seed",
     "sesame seeds":             "sesame seed",
+    "sesame":                   "sesame seed",
+    "toasted sesame seeds":     "sesame seed",
+
+    # Mustard variants
+    "dijon":                    "dijon mustard",
+    "dijon style mustard":      "dijon mustard",
+    "prepared mustard":         "mustard",
+    "dry mustard":              "mustard powder",
 
     # Blends
     "curry":                    "curry powder",
@@ -414,6 +454,49 @@ ALIASES = {
     "persian lime powder":      "dried lime powder",
     "pomegranate molasses powder": "pomegranate powder",
     "zereshk":                  "barberry",
+    
+    
+    "bay leaves":           "bay leaf",
+    "bay":                  "bay leaf",
+    "fresh ginger":         "ginger",
+    "ground black pepper":  "black pepper",
+"freshly ground":       "black pepper",
+"red pepper":           "crushed red pepper",
+"pepper flakes":        "crushed red pepper",
+"cayenne pepper":       "cayenne",
+"dried oregano":        "oregano",
+"dried thyme":          "thyme",
+"dried basil":          "basil",
+"fresh parsley":        "parsley",
+"fresh basil":          "basil",
+"fresh thyme":          "thyme",
+"fresh rosemary":       "rosemary",
+"fresh dill":           "dill",
+"dill weed":            "dill",
+"ground cumin":         "cumin",
+"ground ginger":        "ginger",
+"ground nutmeg":        "nutmeg",
+"ground cinnamon":      "cinnamon",
+"ground coriander":     "coriander",
+"prepared mustard":     "mustard",
+"dry mustard":          "mustard",
+"dijon mustard":        "dijon mustard",
+"chili sauce":          "chili powder",
+"seasoned salt":        "salt",
+"peppercorns":          "black pepper",
+"white pepper":         "white pepper",
+"sesame":               "sesame seed",
+"chipotle":             "chipotle powder",
+"chile":                "chili powder",
+"chiles":               "chili powder",
+"chilies":              "chili powder",
+"green chilies":        "chili powder",
+"jalapeno pepper":      "jalapeno",
+"italian seasoning":    "italian seasoning",
+"taco seasoning":       "taco seasoning",
+"curry":                "curry powder",
+"cocoa powder":         "cocoa powder",
+"sesame oil":           "sesame oil",
 }
 
 
@@ -494,7 +577,7 @@ FLAVOR_PROFILES = {
     "East Asian & Pacific": {
         "chinese five spice", "shichimi togarashi", "furikake",
         "sichuan pepper", "star anise", "ginger", "galangal",
-        "black sesame seed", "sesame seed", "gochugaru",
+        "black sesame seed", "sesame seed", "sesame oil", "gochugaru",
         "lemongrass powder", "kaffir lime leaf",
         "bonito powder", "kombu powder", "miso powder",
         "dried mushroom powder", "shiitake powder",
@@ -520,7 +603,7 @@ FLAVOR_PROFILES = {
         "herbes de provence", "tarragon", "thyme", "rosemary", "marjoram",
         "bay leaf", "parsley", "chervil", "lavender", "dried lavender",
         "savory", "bouquet garni", "celery seed", "white pepper",
-        "piment d'espelette", "fleur de sel",
+        "piment d'espelette", "fleur de sel", "dijon mustard",
     },
 
     "Floral & Perfumed": {

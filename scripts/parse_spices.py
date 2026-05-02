@@ -28,9 +28,9 @@ TOP_N      = 200      # how many unlisted candidates to show in the report
 # ── Import your existing spice list ───────────────────────────────────────────
 try:
     from spice_data import SPICES, ALIASES, CANONICAL_SPICES
-    print(f" Loaded spice_data.py — {len(SPICES)} spices, {len(ALIASES)} aliases")
+    print(f" Loaded spice_data_v2.py — {len(SPICES)} spices, {len(ALIASES)} aliases")
 except ImportError:
-    print("  Could not import spice_data.py — make sure it's in the same folder.")
+    print("  Could not import spice_data_v2.py — make sure it's in the same folder.")
     print("   Continuing with empty spice list for discovery mode.")
     SPICES, ALIASES, CANONICAL_SPICES = [], {}, []
 

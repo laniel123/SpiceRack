@@ -171,10 +171,15 @@ def toggle_spice_favorite():
 
 @app.route("/add_spices", methods=["POST"])
 def add_spices():
-    data     = request.form.get("user_spice_add", "")
+    # Accept both JSON (AJAX) and form POST (fallback)
+    if request.is_json:
+        raw_input = request.get_json(force=True).get("spices", "")
+    else:
+        raw_input = request.form.get("user_spice_add", "")
+
     accepted, rejected = [], []
     conn = sqlite3.connect(SPICES_DB)
-    for entry in data.split(","):
+    for entry in raw_input.split(","):
         raw = entry.strip().lower().strip("\r\n")
         if not raw: continue
         canon = ALIASES.get(raw, raw)
@@ -184,7 +189,13 @@ def add_spices():
         else:
             rejected.append(raw)
     conn.commit()
+    rows = conn.execute("SELECT id, name, is_favorite FROM spices ORDER BY name").fetchall()
     conn.close()
+    spices = [{"id": r[0], "name": r[1], "is_favorite": bool(r[2])} for r in rows]
+
+    if request.is_json:
+        return jsonify({"accepted": accepted, "rejected": rejected, "spices": spices})
+    # Plain form POST fallback (barcode scanner etc.)
     if accepted: flash(f"✓ Added: {', '.join(accepted)}", "success")
     if rejected: flash(f"✗ Not recognized: {', '.join(rejected)}", "error")
     return redirect("/")
@@ -192,13 +203,24 @@ def add_spices():
 
 @app.route("/remove_spice", methods=["POST"])
 def remove_spice():
-    spice_id = request.form.get("spice_id", "").strip()
+    if request.is_json:
+        spice_id = str(request.get_json(force=True).get("spice_id", "")).strip()
+    else:
+        spice_id = request.form.get("spice_id", "").strip()
+
     if spice_id:
         conn = sqlite3.connect(SPICES_DB)
         conn.execute("DELETE FROM spices WHERE id = ?", (spice_id,))
         conn.commit()
+        rows = conn.execute("SELECT id, name, is_favorite FROM spices ORDER BY name").fetchall()
         conn.close()
-    return redirect("/")
+        spices = [{"id": r[0], "name": r[1], "is_favorite": bool(r[2])} for r in rows]
+
+        if request.is_json:
+            return jsonify({"status": "removed", "spices": spices})
+    if not request.is_json:
+        return redirect("/")
+    return jsonify({"status": "no-op", "spices": []})
 
 
 @app.route("/save_recipe", methods=["POST"])

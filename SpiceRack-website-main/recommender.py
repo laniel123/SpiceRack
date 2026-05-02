@@ -13,9 +13,11 @@ import numpy as np
 import pandas as pd
 from collections import Counter
 from sklearn.preprocessing import normalize
+from scipy.sparse import csr_matrix
+from sklearn.preprocessing import normalize
 
 BASE       = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE, "spicerack_model.joblib")
+MODEL_PATH = os.path.join(BASE, "spicerack_model_v3.joblib")
 CSV_PATH   = os.path.join(BASE, "data", "full_recipes_with_restrictions.csv")
 
 DIET_COLS = [
@@ -144,23 +146,28 @@ def load():
 
 def _user_vector(pantry: list, model) -> np.ndarray:
     """pantry → binary → idf_boost (manual) → svd → normalize"""
-    user_bin     = np.asarray(model["mlb"].transform([set(pantry)]))
-    user_boosted = normalize(user_bin * model["idf_boost"], norm="l2")
-    u            = model["svd"].transform(user_boosted)[0]
-    norm         = np.linalg.norm(u)
-    return u / norm if norm > 0 else u
+    user_bin     = np.asarray(model["mlb"].transform([set(pantry)]), 
+                              dtype=np.float32)
+    user_tfidf   = model["tfidf"].transform(csr_matrix(user_bin))
+    user_boosted = normalize(user_tfidf.multiply(model["idf_boost"]), norm="l2")
+    user_svd     = normalize(model["svd"].transform(user_boosted), norm="l2")
+    return user_svd[0]
 
 
 def _nearest_clusters(pantry: list, model) -> list:
-    """Return top N nearest cluster IDs. Search more clusters for small pantries."""
-    user_bin  = np.asarray(model["mlb"].transform([set(pantry)]))
-    distances = model["kmeans"].transform(user_bin)[0]
-    n = TOP_CLUSTERS
-    if len(pantry) <= 2:
-        n = min(n + 4, model["n_clusters"])
-    elif len(pantry) <= 4:
-        n = min(n + 2, model["n_clusters"])
-    return np.argsort(distances)[:n].tolist()
+    """Return top N nearest cluster IDs."""
+    # 1. Get the SVD-compressed vector from the function above
+    u = _user_vector(pantry, model)
+    
+    # 2. Reshape u from (100,) to (1, 100) so KMeans accepts it
+    u_2d = u.reshape(1, -1)
+    
+    # 3. Transform using KMeans to find distances to centers
+    distances = model["kmeans"].transform(u_2d)[0]
+    
+    # 4. Find the closest clusters (Search more for small pantries)
+    n_look = 8 if len(pantry) < 3 else TOP_CLUSTERS
+    return np.argsort(distances)[:n_look].tolist()
 
 
 def recommend(user_spices: list, filters=None, courses=None, top_n=20, favorite_spices=None) -> list:
@@ -215,7 +222,7 @@ def recommend(user_spices: list, filters=None, courses=None, top_n=20, favorite_
             matches = len(favorite_set & set(sp_list))
             if matches:
                 boost = min(matches * BOOST_PER_MATCH, MAX_BOOST)
-                scores[i] *= (1 + boost)
+                scores[i] = min(scores[i] * (1 + boost), 1.0)
     # ─────────────────────────────────────────────────────────────────────────
 
     top_idx = np.argsort(scores)[::-1]
