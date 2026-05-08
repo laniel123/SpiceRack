@@ -288,25 +288,38 @@ def get_recipe_details(title: str) -> dict | None:
     }
 
 
-def search_recipes(query: str, max_results: int = 50) -> pd.DataFrame:
-    """Fast title search prioritizing whole-word matches."""
+def search_recipes(query: str, filters=None, courses=None, max_results: int = 50) -> pd.DataFrame:
+    """Fast title search prioritizing whole-word matches with active filters."""
     load()
     if _recipe_df is None or _lower_titles is None:
         return pd.DataFrame()
     
+    # 1. Initialize a master filter mask
+    # We use the length of _lower_titles (2.2M) to align with the global dataset
+    filter_mask = np.ones(len(_lower_titles), dtype=bool)
+
+    # 2. Apply dietary filters if present
+    if filters:
+        for f in filters:
+            if f in _diet_masks:
+                # _diet_masks are aligned to the model, so we apply them here
+                filter_mask &= _diet_masks[f]
+
+    # 3. Apply course filters if present
+    if courses:
+        filter_mask &= np.isin(_recipe_df['course_category'].values, courses)
+
+    # 4. Perform the text search with Regex word boundaries
     lower_q = query.lower().strip()
-    
-    # 1. Try Whole Word Match First (e.g., finds "Mole" but not "Guacamole")
-    # \b is a word boundary in regex
     pattern = rf'\b{re.escape(lower_q)}\b'
-    mask_exact = pd.Series(_lower_titles).str.contains(pattern, regex=True, na=False).values
     
+    # Combine the text match mask with the dietary/course mask
+    mask_exact = (pd.Series(_lower_titles).str.contains(pattern, regex=True, na=False).values) & filter_mask
     exact_matches = _recipe_df[mask_exact]
     
-    # 2. If we don't have enough exact matches, fill the rest with substring matches
+    # If we need more results, perform a substring search with filters applied
     if len(exact_matches) < max_results:
-        # Exclude what we already found
-        mask_sub = pd.Series(_lower_titles).str.contains(lower_q, regex=False, na=False).values
+        mask_sub = (pd.Series(_lower_titles).str.contains(lower_q, regex=False, na=False).values) & filter_mask
         mask_sub = mask_sub & ~mask_exact
         sub_matches = _recipe_df[mask_sub].head(max_results - len(exact_matches))
         return pd.concat([exact_matches, sub_matches]).head(max_results)
@@ -343,15 +356,19 @@ def suggest_spices(user_spices: list, top_n: int = 5) -> list:
     model = load()
     if model is None:
         return []
-    key = frozenset(user_spices)
-    if key in _suggest_cache:
-        return _suggest_cache[key]
+    
+    # 1. DELETE OR COMMENT OUT THESE THREE LINES TO DISABLE THE CACHE
+    # key = frozenset(user_spices)
+    # if key in _suggest_cache:
+    #    return _suggest_cache[key]
+    
     pantry_set = set(user_spices)
     unlock = Counter()
     for sp_list in model["recipe_spices"]:
         missing = set(sp_list) - pantry_set
         if len(missing) == 1:
             unlock[next(iter(missing))] += 1
+            
     result = unlock.most_common(top_n)
-    _suggest_cache[key] = result
+    # _suggest_cache[key] = result # Also comment this out
     return result

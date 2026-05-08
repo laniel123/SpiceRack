@@ -146,16 +146,14 @@
 </div>
     
 
-    {% if suggestions and recipes %}
-    <div class="unlock-section">
-        <div class="section-label">Unlock More</div>
-        <div class="unlock-chips">
-            {% for spice, count in suggestions %}
-            <span class="unlock-chip">{{ spice }} <em>+{{ count }}</em></span>
-            {% endfor %}
-        </div>
+    <div class="unlock-section" style="{% if not suggestions or not recipes %}display: none;{% endif %}">
+    <div class="section-label">Unlock More</div>
+    <div class="unlock-chips">
+        {% for spice, count in suggestions %}
+        <span class="unlock-chip">{{ spice }} <em>+{{ count }}</em></span>
+        {% endfor %}
     </div>
-    {% endif %}
+</div>
 
 </aside>
 

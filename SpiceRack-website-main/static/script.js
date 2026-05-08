@@ -265,6 +265,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function renderSuggestions(suggestions) {
+    const container = document.querySelector('.unlock-chips');
+    const section = document.querySelector('.unlock-section');
+    if (!container) return;
+
+    // Hide the section if there are no suggestions
+    if (!suggestions || suggestions.length === 0) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+
+    // Show section and render chips
+    if (section) section.style.display = 'flex';
+    container.innerHTML = suggestions.map(([name, count]) => `
+        <span class="unlock-chip">${name} <em>+${count}</em></span>
+    `).join('');
+}
 
 // ── MODAL ─────────────────────────────────────────────────────────────────────
 
@@ -362,23 +379,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Search input
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            clearTimeout(searchTimer);
-            if (query.length < 2) return;
-            searchTimer = setTimeout(async () => {
-                try {
-                    const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-                    const recipes  = await response.json();
-                    renderSearchResults(recipes);
-                } catch (error) {
-                    console.error("Search failed:", error);
-                }
-            }, 400);
-        });
-    }
+    // Inside the DOMContentLoaded listener in script.js
+const searchInput = document.getElementById('search-input');
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        clearTimeout(searchTimer);
+        if (query.length < 2) return;
+
+        searchTimer = setTimeout(async () => {
+            try {
+                // Gather currently checked filters
+                const prefs = Array.from(document.querySelectorAll('input[name="pref"]:checked'))
+                                   .map(i => `pref=${encodeURIComponent(i.value)}`);
+                const courses = Array.from(document.querySelectorAll('input[name="course_pref"]:checked'))
+                                     .map(i => `course_pref=${encodeURIComponent(i.value)}`);
+                
+                const filterQuery = [...prefs, ...courses].join('&');
+                const url = `/api/search?q=${encodeURIComponent(query)}&${filterQuery}`;
+
+                const response = await fetch(url);
+                const recipes  = await response.json();
+                renderSearchResults(recipes);
+            } catch (error) {
+                console.error("Search failed:", error);
+            }
+        }, 400);
+    });
+}
 
 });
 

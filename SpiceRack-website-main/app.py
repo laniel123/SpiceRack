@@ -191,10 +191,23 @@ def add_spices():
     conn.commit()
     rows = conn.execute("SELECT id, name, is_favorite FROM spices ORDER BY name").fetchall()
     conn.close()
+    
+    # 1. Prepare the updated spice list for the response
     spices = [{"id": r[0], "name": r[1], "is_favorite": bool(r[2])} for r in rows]
+    spice_names = [s["name"] for s in spices]
+
+    # 2. Generate NEW suggestions based on the updated pantry
+    suggestions = recommender.suggest_spices(spice_names)
 
     if request.is_json:
-        return jsonify({"accepted": accepted, "rejected": rejected, "spices": spices})
+        # 3. Include 'suggestions' in the JSON return
+        return jsonify({
+            "accepted": accepted, 
+            "rejected": rejected, 
+            "spices": spices,
+            "suggestions": suggestions 
+        })
+        
     # Plain form POST fallback (barcode scanner etc.)
     if accepted: flash(f"✓ Added: {', '.join(accepted)}", "success")
     if rejected: flash(f"✗ Not recognized: {', '.join(rejected)}", "error")
@@ -279,8 +292,20 @@ def search_database():
     try:
         query = request.args.get("q", "").strip().lower()
         if not query: return jsonify([])
-        matches = recommender.search_recipes(query)
+
+        # Capture active filters from the request
+        selected_prefs   = request.args.getlist("pref")
+        selected_courses = request.args.getlist("course_pref")
+
+        # Pass filters into the updated search function
+        matches = recommender.search_recipes(
+            query, 
+            filters=selected_prefs, 
+            courses=selected_courses
+        )
+        
         if matches.empty: return jsonify([])
+        
         user_spices  = {s["name"].lower() for s in get_spices()}
         saved_titles = get_saved_titles()
         results = []

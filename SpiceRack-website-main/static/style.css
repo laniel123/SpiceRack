@@ -434,7 +434,7 @@ body {
     line-height: 1.7;
     margin: 0;
 }
-}
+
 
 /* flash */
 .flash-zone { display: flex; flex-direction: column; gap: 5px; }
