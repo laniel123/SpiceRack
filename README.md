@@ -3,7 +3,7 @@
 
 Tell us what spices you have, we tell you what you can cook.
 
-![SpiceRack landing page](https://github.com/user-attachments/assets/3dc84527-1334-42ce-9d95-41cd23c656fa)
+[![SpiceRack Demo](https://img.youtube.com/vi/q3erh9lnYGU/maxresdefault.jpg)](https://youtu.be/q3erh9lnYGU?si=QYqmMikjBPr1kx1P)
 
 ---
 
@@ -92,7 +92,7 @@ The final dataset (`full_recipes_with_restrictions.csv`) extends the base Recipe
 | `is_gluten_free` | No gluten-containing ingredients detected |
 | `is_keto` | Low-carb profile — no grains, sugar, or starchy vegetables |
 | `is_paleo` | No grains, legumes, dairy, or refined sugar |
-| `is_halal` | No pork or alcohol detected |
+| `is_halal` — No pork or alcohol detected |
 | `is_kosher` | No pork or shellfish detected |
 | `is_hindu_friendly` | No beef detected |
 | `allergens_present` | Comma-separated list of detected allergens |
