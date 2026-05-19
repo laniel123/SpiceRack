@@ -30,3 +30,4 @@ spicerack_model2.joblib
 SpiceRack-website-main/reports/meat_audit_report.txt
 *.csv
 *.db
+.history/
