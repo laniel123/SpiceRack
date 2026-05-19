@@ -120,6 +120,8 @@ Both files are too large for GitHub and must be generated locally.
 ```bash
 pip install flask scikit-learn scipy joblib numpy pandas requests
 pip install pyzbar opencv-python   # barcode scanner
+pip install -r requirements.txt
+
 brew install zbar                   # Mac only — required for pyzbar
 ```
 
