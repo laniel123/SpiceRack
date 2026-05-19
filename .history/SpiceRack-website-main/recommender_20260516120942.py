@@ -18,7 +18,7 @@ from scipy.sparse import csr_matrix
 from sklearn.preprocessing import normalize
 
 BASE       = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE, "spicerack_model_v4.joblib")
+MODEL_PATH = os.path.join(BASE, "spicerack_model_v3.joblib")
 CSV_PATH   = os.path.join(BASE, "data", "full_recipes_with_restrictions.csv")
 
 DIET_COLS = [

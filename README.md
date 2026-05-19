@@ -3,6 +3,8 @@
 
 Tell us what spices you have, we tell you what you can cook.
 
+![SpiceRack landing page](https://i.imgur.com/GBGYtk5.gif)
+
 ---
 
 ## What it does
@@ -11,15 +13,39 @@ SpiceRack is a recipe recommendation web app built on the [RecipeNLG dataset](ht
 
 The system learns which spices are rare and distinctive (saffron, galangal, za'atar) vs common and uninformative (salt, pepper), so recommendations are driven by what makes your pantry unique.
 
-**Features:**
-- Recommends 12 recipes based on your spice pantry using a trained K-Means + SVD model
-- Hearts recipes to save them to a personal collection
-- Suggests which spice to buy next to unlock the most new recipes
-- Scans barcodes on spice jars to add spices automatically
-- Validates spice input against canonical vocabulary
-- Can filter by dietary preferences (vegetarian, vegan, gluten-free, keto, paleo, halal, kosher, dairy-free, hindu-friendly)
-- Searches the full 2.2M recipe database by title
-- Photo previews for each recipe via Unsplash API with disk-based caching
+---
+
+## Features
+
+### ➕ Add Spices to Your Pantry
+Type in the spices you have and SpiceRack validates them against a 179-spice canonical vocabulary with 319+ aliases (`jeera` → `cumin`, `haldi` → `turmeric`). You can also scan barcodes on spice jars to add them automatically.
+
+![Adding spices](https://i.imgur.com/HGjAYnL.gif)
+
+### 🌶️ Spice Recommendation Bar
+See which spice to buy next to unlock the most new recipes from the 2.2M dataset.
+
+![Spice bar](https://i.imgur.com/CEu0kE2.gif)
+
+### 🔍 Search Recipes
+Search the full 2.2M recipe database by title.
+
+![Search recipes](https://i.imgur.com/OoDzXwv.gif)
+
+### 🥗 Dietary Filters
+Filter recommendations by dietary preference — vegetarian, vegan, gluten-free, keto, paleo, halal, kosher, dairy-free, and hindu-friendly.
+
+![Dietary filters](https://i.imgur.com/j7y8IJQ.gif)
+
+### 📚 Saved Recipe Library
+Heart any recipe to save it to your personal collection.
+
+![Saved library](https://i.imgur.com/x5gDKG9.gif)
+
+### 🎲 Random Recipe
+Feeling adventurous? Discover something new with a random recipe.
+
+![Random recipe](https://i.imgur.com/vYwFFJS.gif)
 
 ---
 

@@ -150,8 +150,7 @@ def api_recommendations():
             "saved":      r["title"] in saved_titles,
             "course":     r.get("course", ""),
             "diets":      r.get("diets", []),
-            # Return cached image only — never trigger a new Unsplash fetch here
-            "image":      unsplash._cache.get(r["title"], ""),
+            "image":      unsplash.get_photo_url(r["title"], r.get("all_spices", [])),
         })
 
     return jsonify(results)
