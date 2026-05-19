@@ -3,7 +3,7 @@
 
 Tell us what spices you have, we tell you what you can cook.
 
-![SpiceRack landing page](https://i.imgur.com/GBGYtk5.gif)
+![SpiceRack landing page](https://github.com/user-attachments/assets/3dc84527-1334-42ce-9d95-41cd23c656fa)
 
 ---
 
@@ -20,32 +20,32 @@ The system learns which spices are rare and distinctive (saffron, galangal, za'a
 ### ➕ Add Spices to Your Pantry
 Type in the spices you have and SpiceRack validates them against a 179-spice canonical vocabulary with 319+ aliases (`jeera` → `cumin`, `haldi` → `turmeric`). You can also scan barcodes on spice jars to add them automatically.
 
-![Adding spices](https://i.imgur.com/HGjAYnL.gif)
+![Adding spices](https://github.com/user-attachments/assets/87c49159-aae1-4e2f-a306-9f94669479c2)
 
 ### 🌶️ Spice Recommendation Bar
 See which spice to buy next to unlock the most new recipes from the 2.2M dataset.
 
-![Spice bar](https://i.imgur.com/CEu0kE2.gif)
+![Spice bar](https://github.com/user-attachments/assets/4be0340b-5086-4e14-969c-8d13f1fd9e27)
 
 ### 🔍 Search Recipes
 Search the full 2.2M recipe database by title.
 
-![Search recipes](https://i.imgur.com/OoDzXwv.gif)
+![Search recipes](https://github.com/user-attachments/assets/5f2e196c-83c9-4ec2-8048-de8fc28b7173)
 
 ### 🥗 Dietary Filters
 Filter recommendations by dietary preference — vegetarian, vegan, gluten-free, keto, paleo, halal, kosher, dairy-free, and hindu-friendly.
 
-![Dietary filters](https://i.imgur.com/j7y8IJQ.gif)
+![Dietary filters](https://github.com/user-attachments/assets/6d5a54ce-f136-4609-a10f-9430d2be35fa)
 
 ### 📚 Saved Recipe Library
 Heart any recipe to save it to your personal collection.
 
-![Saved library](https://i.imgur.com/x5gDKG9.gif)
+![Saved library](https://github.com/user-attachments/assets/e1111d3a-8162-499d-bb83-4fc19163d0e9)
 
 ### 🎲 Random Recipe
 Feeling adventurous? Discover something new with a random recipe.
 
-![Random recipe](https://i.imgur.com/vYwFFJS.gif)
+![Random recipe](https://github.com/user-attachments/assets/584256eb-88b8-493b-8e3b-4d13802f77da)
 
 ---
 
