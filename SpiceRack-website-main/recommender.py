@@ -1,25 +1,42 @@
 """
-recommender.py
-Built for model keys:
-kmeans, svd, mlb, tfidf, idf_boost, recipe_matrix,
-recipe_titles, recipe_spices, cluster_labels, cluster_top_spices,
-n_clusters, n_recipes, silhouette
+recommender.py - SpiceRack v5
+=============================================================
+
+Two recommendation layers:
+
+  1. Content-based (geometry-corrected):
+       pantry -> binary -> TF-IDF -> IDF boost -> zero universals
+       -> SVD -> normalize -> K-Means cluster search -> cosine sim
+
+  2. Implicit feedback personalization (NEW):
+       Saved recipes in saved_recipes.db tell us which clusters
+       the user gravitates toward. Those clusters get a distance
+       bonus so they rank higher in the top-cluster search.
+       This is "implicit feedback" from your lecture slides -
+       listening patterns / browsing behaviour, applied to cooking.
+       Zero model retraining required.
+
+Built for model keys (v5):
+  kmeans, svd, mlb, tfidf, idf_boost, exclude_idx,
+  recipe_matrix, recipe_titles, recipe_spices,
+  cluster_labels, cluster_top_spices, n_clusters, n_recipes, silhouette
 """
 
 import os
 import re
 import ast
+import sqlite3
 import joblib
 import numpy as np
 import pandas as pd
 from collections import Counter
 from sklearn.preprocessing import normalize
 from scipy.sparse import csr_matrix
-from sklearn.preprocessing import normalize
 
 BASE       = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE, "spicerack_model_v4.joblib")
+MODEL_PATH = os.path.join(BASE, "spicerack_model_v5.joblib")
 CSV_PATH   = os.path.join(BASE, "data", "full_recipes_with_restrictions.csv")
+DB_PATH    = os.path.join(BASE, "data", "saved_recipes.db")
 
 DIET_COLS = [
     'is_vegetarian', 'is_vegan', 'is_dairy_free', 'is_gluten_free',
@@ -28,16 +45,21 @@ DIET_COLS = [
 
 _model     = None
 _recipe_df = None
-TOP_CLUSTERS = 5
+TOP_CLUSTERS = 7
 
-# Precomputed at load() time — never rebuilt per request
-_diet_masks    = {}   # col -> np.ndarray[bool] aligned to model["recipe_titles"]
-_course_arr    = None # np.ndarray[str] aligned to model["recipe_titles"]
-_norm_titles   = None # pd.Series of lowercase model titles (1.27 M)
-_lower_titles  = None # np.ndarray of lowercase df['title'] for /api/search (2.2 M)
-_recipe_lookup = None # dict: stripped title -> df row for get_recipe_details
-_suggest_cache = {}   # frozenset(pantry) -> suggest result
+# Precomputed at load() time
+_diet_masks    = {}
+_course_arr    = None
+_norm_titles   = None
+_lower_titles  = None
+_recipe_lookup = None
+_suggest_cache = {}
 
+# Personalization config
+# SAVE_BOOST: distance reduction per saved recipe in a cluster (10% per save)
+# SAVE_BOOST_CAP: maximum total reduction for any cluster (40% max)
+SAVE_BOOST     = 0.10
+SAVE_BOOST_CAP = 0.40
 
 _DESSERT_KEYWORDS = {
     "cake", "cookie", "cookies", "pie", "tart", "brownie", "brownies",
@@ -49,7 +71,7 @@ _DESSERT_KEYWORDS = {
     "waffle", "waffles", "pancake", "pancakes", "sweet roll", "cinnamon roll",
     "dessert", "sweet", "sweets", "chocolate", "candy bar", "lollipop",
     "meringue", "praline", "caramel", "butterscotch", "toffee", "nougat",
-    "brittle", "bark", "fudge", "popsicle", "smoothie bowl", "fruit salad",
+    "brittle", "bark", "popsicle", "smoothie bowl", "fruit salad",
 }
 
 _MAINS_KEYWORDS = {
@@ -61,7 +83,7 @@ _MAINS_KEYWORDS = {
     "pizza", "quiche", "frittata", "omelette", "omelet", "steak", "meatball",
     "meatloaf", "pot pie", "pot roast", "brisket", "ribs", "wings",
     "salad", "grain bowl", "bowl", "bake", "baked", "grilled", "roasted",
-    "braised", "sauteed", "sautéed", "pan-fried", "deep-fried", "poached",
+    "braised", "sauteed", "sauted", "pan-fried", "deep-fried", "poached",
     "side dish", "stuffing", "dressing", "mashed", "potatoes", "coleslaw",
     "noodle", "noodles", "ramen", "udon", "soba", "pho", "gumbo", "jambalaya",
     "paella", "biryani", "tagine", "moussaka", "shakshuka", "fajita",
@@ -84,22 +106,18 @@ def _classify_course(title) -> str:
 
 
 def _precompute(model, df):
-    """Build all per-request caches once after model + CSV are loaded."""
     global _diet_masks, _course_arr, _norm_titles, _lower_titles, _recipe_lookup
 
-    # Normalised lowercase model titles — reused by every filter operation
     _norm_titles = pd.Series([
         t.strip().lower() if isinstance(t, str) else ''
         for t in model['recipe_titles']
     ])
 
-    # Single groupby over all dietary + course columns (one pass through 2.2 M rows)
     title_lower = df['title'].str.strip().str.lower()
     agg_spec = {c: 'min' for c in DIET_COLS if c in df.columns}
     agg_spec['course_category'] = 'first'
     grouped = df.groupby(title_lower).agg(agg_spec)
 
-    # Dietary masks: numpy bool array aligned to model["recipe_titles"]
     for col in DIET_COLS:
         if col in grouped.columns:
             lookup = grouped[col].to_dict()
@@ -110,14 +128,10 @@ def _precompute(model, df):
                 .values
             )
 
-    # Course array: string per model recipe
     course_lookup = grouped['course_category'].to_dict()
     _course_arr = _norm_titles.map(course_lookup).fillna('').values
-
-    # Lowercase titles array for fast /api/search
     _lower_titles = df['title'].str.lower().fillna('').values
 
-    # Title → row dict for O(1) get_recipe_details (keep first occurrence per title)
     dedup = df.drop_duplicates(subset='title', keep='first')
     _recipe_lookup = dict(zip(dedup['title'].str.strip(), dedup.itertuples(index=False)))
 
@@ -128,52 +142,155 @@ def load():
     global _model, _recipe_df
     if _model is None and os.path.exists(MODEL_PATH):
         _model = joblib.load(MODEL_PATH)
-        print(f"[recommender] loaded — {_model['n_recipes']:,} recipes, "
+        print(f"[recommender] loaded - {_model['n_recipes']:,} recipes, "
               f"{_model['n_clusters']} clusters, "
-              f"silhouette {_model.get('silhouette','?')}")
+              f"silhouette {_model.get('silhouette', '?')}")
 
     if _recipe_df is None and os.path.exists(CSV_PATH):
         _recipe_df = pd.read_csv(CSV_PATH)
-        print(f"[recommender] recipe data — {len(_recipe_df):,} rows")
+        print(f"[recommender] recipe data - {len(_recipe_df):,} rows")
         if "course_category" not in _recipe_df.columns or _recipe_df["course_category"].isna().all():
-            print("[recommender] classifying course categories from titles…")
+            print("[recommender] classifying course categories...")
             _recipe_df["course_category"] = _recipe_df["title"].apply(_classify_course)
-            print("[recommender] course classification done")
         if _model is not None:
             _precompute(_model, _recipe_df)
 
     return _model
 
 
+# ── User vector (v5 geometry-corrected) ──────────────────────────────────────
+#
+# Pylance flags .multiply() on the result of tfidf.transform() because the
+# return type is annotated as a generic sparse matrix base class, which does
+# not expose .multiply() in the stub. The fix is to explicitly cast to
+# csr_matrix after each transform step so Pylance knows the concrete type.
+#
+# This is NOT a logic change - csr_matrix(x) on an already-csr matrix is
+# a zero-copy no-op. It is purely a type annotation hint for the linter.
+
 def _user_vector(pantry: list, model) -> np.ndarray:
-    """pantry → binary → idf_boost (manual) → svd → normalize"""
-    user_bin     = np.asarray(model["mlb"].transform([set(pantry)]), 
-                              dtype=np.float32)
-    user_tfidf   = model["tfidf"].transform(csr_matrix(user_bin))
-    user_boosted = normalize(user_tfidf.multiply(model["idf_boost"]), norm="l2")
-    user_svd     = normalize(model["svd"].transform(user_boosted), norm="l2")
+    """
+    pantry -> binary -> TF-IDF -> IDF boost -> SVD -> normalize
+
+    Universals (salt, garlic, black pepper) are KEPT here.
+    This matches X_svd_score — the scoring matrix in v5.1.
+    K-Means cluster search uses the same vector: the SVD projection
+    is shared between train and score matrices so distances are valid.
+
+    Note: exclude_idx is stored in the model but intentionally not applied
+    at inference. Applying it here would cause the same zero-vector collapse
+    that created the 35k catch-all cluster in v5.0.
+    """
+    user_bin = np.asarray(
+        model["mlb"].transform([set(pantry)]), dtype=np.float32
+    )
+    user_tfidf:   csr_matrix = csr_matrix(
+        model["tfidf"].transform(csr_matrix(user_bin))
+    )
+    user_boosted: csr_matrix = csr_matrix(
+        user_tfidf.multiply(model["idf_boost"])
+    )
+    user_boosted = normalize(user_boosted, norm="l2")
+    user_svd     = model["svd"].transform(user_boosted)
+    user_svd     = normalize(user_svd, norm="l2")
     return user_svd[0]
 
 
-def _nearest_clusters(pantry: list, model) -> list:
-    """Return top N nearest cluster IDs."""
-    # 1. Get the SVD-compressed vector from the function above
-    u = _user_vector(pantry, model)
-    
-    # 2. Reshape u from (100,) to (1, 100) so KMeans accepts it
-    u_2d = u.reshape(1, -1)
-    
-    # 3. Transform using KMeans to find distances to centers
-    distances = model["kmeans"].transform(u_2d)[0]
-    
-    # 4. Find the closest clusters (Search more for small pantries)
-    n_look = 8 if len(pantry) < 3 else TOP_CLUSTERS
+# ── Implicit feedback: saved recipe cluster weights ───────────────────────────
+
+def _get_saved_cluster_counts(model, db_path: str = DB_PATH) -> dict:
+    """
+    Read saved recipe titles from SQLite, find which cluster each belongs to,
+    return {cluster_id: save_count}.
+
+    This is the implicit feedback signal. More saves in a cluster means a
+    stronger pull toward that cluster during the next recommendation request.
+    Returns empty dict if DB is missing, empty, or the query fails.
+    """
+    if not os.path.exists(db_path):
+        return {}
+    try:
+        conn  = sqlite3.connect(db_path)
+        cur   = conn.cursor()
+        cur.execute("SELECT title FROM saved_recipes")
+        saved_titles = {row[0].strip() for row in cur.fetchall()}
+        conn.close()
+    except Exception as e:
+        print(f"[recommender] DB read failed: {e}")
+        return {}
+
+    if not saved_titles:
+        return {}
+
+    cluster_counts: Counter = Counter()
+    title_to_cluster = dict(zip(model["recipe_titles"], model["cluster_labels"]))
+
+    for title in saved_titles:
+        cid = title_to_cluster.get(title)
+        if cid is not None:
+            cluster_counts[int(cid)] += 1
+
+    return dict(cluster_counts)
+
+
+def _apply_save_boost(distances: np.ndarray, cluster_counts: dict) -> np.ndarray:
+    """
+    Reduce distances for clusters the user has saved recipes in.
+    Lower distance = ranked higher in top-cluster search.
+
+    Formula: new_dist = dist * (1 - min(n_saves * SAVE_BOOST, SAVE_BOOST_CAP))
+
+    With defaults (SAVE_BOOST=0.10, SAVE_BOOST_CAP=0.40):
+      1 save  -> 10% closer
+      3 saves -> 30% closer
+      5 saves -> 40% closer (capped)
+    """
+    if not cluster_counts:
+        return distances
+
+    boosted = distances.copy()
+    for cid, count in cluster_counts.items():
+        if cid < len(boosted):
+            reduction = min(count * SAVE_BOOST, SAVE_BOOST_CAP)
+            boosted[cid] = boosted[cid] * (1.0 - reduction)
+    return boosted
+
+
+def _nearest_clusters(pantry: list, model, db_path: str = DB_PATH) -> list:
+    """
+    Return top N nearest cluster IDs, adjusted by save history.
+
+    Without saves: pure content-based cluster ranking.
+    With saves:    saved clusters get distance bonus and rank higher.
+    """
+    u         = _user_vector(pantry, model)
+    distances = model["kmeans"].transform(u.reshape(1, -1))[0]
+
+    # Personalization: pull saved clusters closer
+    cluster_counts = _get_saved_cluster_counts(model, db_path)
+    if cluster_counts:
+        distances = _apply_save_boost(distances, cluster_counts)
+        print(f"[recommender] personalization active - "
+              f"{sum(cluster_counts.values())} saved recipes across "
+              f"{len(cluster_counts)} clusters")
+
+    n_look = 9 if len(pantry) < 3 else TOP_CLUSTERS
     return np.argsort(distances)[:n_look].tolist()
 
 
-def recommend(user_spices: list, filters=None, courses=None, top_n=20, favorite_spices=None) -> list:
-    """Recommend recipes using ML model scoring with dietary/course filters.
-    Recipes matching favorited spices receive a score boost."""
+# ── Main recommendation function ──────────────────────────────────────────────
+
+def recommend(user_spices: list, filters=None, courses=None,
+              top_n=20, favorite_spices=None) -> list:
+    """
+    Recommend recipes using v5 ML pipeline + implicit feedback personalization.
+
+    user_spices:     canonical spice strings from the user's pantry
+    filters:         diet filter strings e.g. ['is_vegan', 'is_gluten_free']
+    courses:         course strings e.g. ['Mains & Sides']
+    top_n:           number of results to return
+    favorite_spices: per-spice boost (legacy, kept for backwards compat)
+    """
     model = load()
     if model is None or not user_spices:
         return []
@@ -181,24 +298,21 @@ def recommend(user_spices: list, filters=None, courses=None, top_n=20, favorite_
     pantry_set   = set(user_spices)
     favorite_set = set(favorite_spices) if favorite_spices else set()
 
-    # Build filter mask from precomputed arrays — no per-request groupby
+    # Dietary + course filter mask from precomputed arrays
     filter_mask = None
     if (filters and len(filters) > 0) or (courses and len(courses) > 0):
         if _norm_titles is None:
             return []
         filter_mask = np.ones(len(model["recipe_titles"]), dtype=bool)
-
         for f in (filters or []):
             if f in _diet_masks:
                 filter_mask &= _diet_masks[f]
-
         if courses and len(courses) > 0 and _course_arr is not None:
             filter_mask &= np.isin(np.asarray(_course_arr, dtype=str), courses)
-
         if not filter_mask.any():
             return []
 
-    u = _user_vector(user_spices, model)
+    u                = _user_vector(user_spices, model)
     nearest_clusters = _nearest_clusters(user_spices, model)
 
     cluster_arr  = np.array(model["cluster_labels"])
@@ -211,9 +325,7 @@ def recommend(user_spices: list, filters=None, courses=None, top_n=20, favorite_
     if filter_mask is not None:
         scores[~filter_mask] = 0
 
-    # ── Favorite boost ────────────────────────────────────────────────────────
-    # For each recipe, count how many of its spices are favorited.
-    # Each favorited match adds a 15% boost, capped at 60% total.
+    # Legacy favorite spice boost
     if favorite_set:
         BOOST_PER_MATCH = 0.15
         MAX_BOOST       = 0.60
@@ -224,44 +336,50 @@ def recommend(user_spices: list, filters=None, courses=None, top_n=20, favorite_
             if matches:
                 boost = min(matches * BOOST_PER_MATCH, MAX_BOOST)
                 scores[i] = min(scores[i] * (1 + boost), 1.0)
-    # ─────────────────────────────────────────────────────────────────────────
 
     top_idx = np.argsort(scores)[::-1]
     results = []
+
+    diet_col_map = {
+        "vegetarian": "is_vegetarian", "vegan": "is_vegan",
+        "dairy-free": "is_dairy_free", "gluten-free": "is_gluten_free",
+        "keto": "is_keto", "paleo": "is_paleo",
+        "halal": "is_halal", "kosher": "is_kosher", "hindu": "is_hindu_friendly"
+    }
+
     for i in top_idx:
         if scores[i] <= 0 or len(results) == top_n:
             break
-        recipe_title = model["recipe_titles"][i]
-        sp  = set(model["recipe_spices"][i])
-        cid = int(cluster_arr[i])
+        sp      = set(model["recipe_spices"][i])
+        matched = sorted(pantry_set & sp)
+
+        # Require at least 1 pantry spice in every result
+        # Prevents geometrically-close but ingredient-irrelevant results
+        if len(matched) == 0:
+            continue
+
+        cid     = int(cluster_arr[i])
         profile = ", ".join(model["cluster_top_spices"].get(cid, [])[:3])
-
-        # course from precomputed array
-        course = str(_course_arr[i]) if _course_arr is not None else "Unknown"
-
-        # diets from precomputed masks
-        diet_col_map = {
-            "vegetarian": "is_vegetarian", "vegan": "is_vegan",
-            "dairy-free": "is_dairy_free", "gluten-free": "is_gluten_free",
-            "keto": "is_keto", "paleo": "is_paleo",
-            "halal": "is_halal", "kosher": "is_kosher", "hindu": "is_hindu_friendly"
-        }
-        diets = [name for name, col in diet_col_map.items()
-                 if col in _diet_masks and _diet_masks[col][i]]
+        course  = str(_course_arr[i]) if _course_arr is not None else "Unknown"
+        diets   = [name for name, col in diet_col_map.items()
+                   if col in _diet_masks and _diet_masks[col][i]]
 
         results.append({
-            "title":      recipe_title,
+            "title":      model["recipe_titles"][i],
             "score":      round(float(scores[i]), 3),
             "profile":    profile,
-            "matched":    sorted(pantry_set & sp),
+            "matched":    matched,
             "missing":    sorted(sp - pantry_set),
             "all_spices": list(sp),
             "saved":      False,
             "course":     course,
             "diets":      diets,
         })
+
     return results
 
+
+# ── Unchanged utility functions ───────────────────────────────────────────────
 
 def get_recipe_details(title: str) -> dict | None:
     load()
@@ -288,46 +406,41 @@ def get_recipe_details(title: str) -> dict | None:
     }
 
 
-def search_recipes(query: str, filters=None, courses=None, max_results: int = 50) -> pd.DataFrame:
-    """Fast title search prioritizing whole-word matches with active filters."""
+def search_recipes(query: str, filters=None, courses=None,
+                   max_results: int = 50) -> pd.DataFrame:
     load()
     if _recipe_df is None or _lower_titles is None:
         return pd.DataFrame()
-    
-    # 1. Initialize a master filter mask
-    # We use the length of _lower_titles (2.2M) to align with the global dataset
-    filter_mask = np.ones(len(_lower_titles), dtype=bool)
 
-    # 2. Apply dietary filters if present
+    filter_mask = np.ones(len(_lower_titles), dtype=bool)
     if filters:
         for f in filters:
             if f in _diet_masks:
-                # _diet_masks are aligned to the model, so we apply them here
                 filter_mask &= _diet_masks[f]
-
-    # 3. Apply course filters if present
     if courses:
         filter_mask &= np.isin(_recipe_df['course_category'].values, courses)
 
-    # 4. Perform the text search with Regex word boundaries
-    lower_q = query.lower().strip()
-    pattern = rf'\b{re.escape(lower_q)}\b'
-    
-    # Combine the text match mask with the dietary/course mask
-    mask_exact = (pd.Series(_lower_titles).str.contains(pattern, regex=True, na=False).values) & filter_mask
+    lower_q    = query.lower().strip()
+    pattern    = rf'\b{re.escape(lower_q)}\b'
+    mask_exact = (
+        pd.Series(_lower_titles).str.contains(pattern, regex=True, na=False).values
+        & filter_mask
+    )
     exact_matches = _recipe_df[mask_exact]
-    
-    # If we need more results, perform a substring search with filters applied
+
     if len(exact_matches) < max_results:
-        mask_sub = (pd.Series(_lower_titles).str.contains(lower_q, regex=False, na=False).values) & filter_mask
-        mask_sub = mask_sub & ~mask_exact
+        mask_sub = (
+            pd.Series(_lower_titles).str.contains(lower_q, regex=False, na=False).values
+            & filter_mask
+            & ~mask_exact
+        )
         sub_matches = _recipe_df[mask_sub].head(max_results - len(exact_matches))
         return pd.concat([exact_matches, sub_matches]).head(max_results)
-        
+
     return exact_matches.head(max_results)
 
+
 def get_recipe_meta(title: str) -> dict:
-    """Return course and diets for a saved recipe using precomputed arrays."""
     load()
     meta = {"course": "", "diets": []}
     if _norm_titles is None or _course_arr is None:
@@ -356,19 +469,10 @@ def suggest_spices(user_spices: list, top_n: int = 5) -> list:
     model = load()
     if model is None:
         return []
-    
-    # 1. DELETE OR COMMENT OUT THESE THREE LINES TO DISABLE THE CACHE
-    # key = frozenset(user_spices)
-    # if key in _suggest_cache:
-    #    return _suggest_cache[key]
-    
     pantry_set = set(user_spices)
-    unlock = Counter()
+    unlock: Counter = Counter()
     for sp_list in model["recipe_spices"]:
         missing = set(sp_list) - pantry_set
         if len(missing) == 1:
             unlock[next(iter(missing))] += 1
-            
-    result = unlock.most_common(top_n)
-    # _suggest_cache[key] = result # Also comment this out
-    return result
+    return unlock.most_common(top_n)

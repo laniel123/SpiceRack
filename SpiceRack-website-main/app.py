@@ -115,6 +115,19 @@ def index():
     )
 
 
+@app.route("/api/suggestions")
+def api_suggestions():
+    """
+    Returns spice suggestions based on current pantry.
+    Called by removeSpice() in script.js so suggestions
+    update without a full page reload when a spice is removed.
+    """
+    spices      = get_spices()
+    spice_names = [s["name"] for s in spices]
+    suggestions = recommender.suggest_spices(spice_names)
+    return jsonify(suggestions)
+
+
 @app.route("/api/recommendations")
 def api_recommendations():
     """

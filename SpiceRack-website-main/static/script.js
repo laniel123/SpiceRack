@@ -602,6 +602,14 @@ async function removeSpice(event, spiceId) {
     });
     const data = await resp.json();
     renderSpiceList(data.spices);
+
+    // Fetch fresh suggestions based on updated pantry
+    try {
+        const suggestResp = await fetch('/api/suggestions');
+        const suggestions = await suggestResp.json();
+        renderSuggestions(suggestions);
+    } catch (e) { /* suggestions are non-critical */ }
+
     applyFilters();
 }
 
@@ -629,6 +637,7 @@ function handleSpiceAdd() {
         if (data.rejected && data.rejected.length)
             showFlash('✗ Not recognized: ' + data.rejected.join(', '), 'error');
         renderSpiceList(data.spices);
+        if (data.suggestions) renderSuggestions(data.suggestions);
         applyFilters();
     })
     .catch(err => {
